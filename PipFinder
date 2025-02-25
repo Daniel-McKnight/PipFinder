@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+import sys, re
+import pandas as pd
+from Bio import SeqIO
+
+recs = SeqIO.parse(sys.argv[1], 'fasta')
+
+NI_PIP_motif = "TTCG[CTG][ATGC]{15}TTCG[CTG][ATGC]{30,32}T[CT][AGTC]{3}T"
+PIP_motif = "TTCG[CTG][ATGC]{15}TTCG[CTG]"
+
+NI_PIPrc_motif = "A[AGTC]{3}[GA]A[AGTC]{30,32}[GCA]CGAA[AGTC]{15}[CGA]CGAA"
+PIPrc_motif = "[CGA]CGAA[ATGC]{15}[CGA]CGAA"
+
+NIout = []
+PIPout = []
+
+for rec in recs:
+    NI_matches = re.finditer(NI_PIP_motif, str(rec.seq))
+    rcNI_matches = re.finditer(NI_PIPrc_motif, str(rec.seq))
+    print(f"Looking for matches in {rec.id}")
+    for NI_match in NI_matches:
+        NIout.append([rec.id, NI_match.start() + 1, NI_match.end(), NI_match.group(), '+'])
+        print(f"found NI match at {rec.id}")
+    for NI_match in rcNI_matches:
+        NIout.append([rec.id, NI_match.start() + 1, NI_match.end(), NI_match.group(), '-'])
+        print(f"found rcNI match at {rec.id}")
+    PIP_matches = re.finditer(PIP_motif, str(rec.seq))
+    rcPIP_matches = re.finditer(PIPrc_motif, str(rec.seq))
+    for PIP_match in PIP_matches:
+        PIPout.append([rec.id, PIP_match.start() + 1, PIP_match.end(), PIP_match.group(), '+'])
+        print(f"found PIP match at {rec.id}")
+    for PIP_match in rcPIP_matches:
+        PIPout.append([rec.id, PIP_match.start() + 1, PIP_match.end(), PIP_match.group(), '-'])
+        print(f"found rcPIP match at {rec.id}")
+
+NI_df = pd.DataFrame(NIout, columns=['Sequence ID', 'Start', 'End', 'Motif sequence', 'Strand'])
+PIP_df = pd.DataFrame(PIPout, columns=['Sequence ID', 'Start', 'End', 'Motif sequence', 'Strand'])
+
+outprefix = sys.argv[2]
+
+NI_df.to_csv(f'{outprefix}.NI_PIP.csv', index=False)
+PIP_df.to_csv(f'{outprefix}.PIP.csv', index=False)
+
